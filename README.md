@@ -1,5 +1,12 @@
 # MailFilter AI
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Node.js](https://img.shields.io/badge/Node.js-24%2B-green.svg)](https://nodejs.org/)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Ready-blue?logo=docker&logoColor=white)
+[![CI](https://github.com/palhamel/mailfilter-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/palhamel/mailfilter-ai/actions/workflows/ci.yml)
+![AI Providers](https://img.shields.io/badge/AI-Mistral%20%7C%20Berget-purple?logo=openai&logoColor=white)
+
 AI-powered email filter. Reads digest emails from multiple platforms via IMAP, scores each listing against your personal profile using AI, and sends you a sorted summary email with the best matches on top. Supports multiple AI providers — Mistral AI (default) and Berget AI (EU-sovereign inference).
 
 Great for any type of digest email — job ads, newsletters, property listings, freelance gigs — anything where you get bulk emails and only care about a few. Forward your digests to a dedicated mailbox, define what you're looking for in a simple markdown profile, and let AI do the filtering. Instead of scanning dozens of irrelevant listings every day, you get one clean summary with the best matches ranked first and the noise at the bottom.
