@@ -32,8 +32,10 @@ export const notify = async (
 };
 
 export const notifyStartup = async (env: EnvConfig): Promise<void> => {
+  const model = env.AI_PROVIDER === 'berget' ? env.BERGET_MODEL : env.MISTRAL_MODEL;
   await notify(env, 'JobFilter AI Started', [
-    `Model: ${env.MISTRAL_MODEL}`,
+    `Provider: ${env.AI_PROVIDER}`,
+    `Model: ${model}`,
     `Schedule: every ${env.MAILBOX_CHECK_INTERVAL_MINUTES} minutes`,
     `Notify: ${env.NOTIFY_EMAIL}`,
   ].join('\n'), { color: COLOR_GREEN });
