@@ -4,8 +4,8 @@ import type { EnvConfig, JobEmail, JobEvaluation } from '../types/index.js';
 export const createTransport = (env: EnvConfig) => {
   return nodemailer.createTransport({
     host: env.SMTP_HOST,
-    port: 587,
-    secure: false,
+    port: 465,
+    secure: true,
     auth: {
       user: env.MAIL_USER,
       pass: env.MAIL_PASSWORD,
