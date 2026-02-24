@@ -1,8 +1,24 @@
 {
   "name": "mailfilter-ai",
   "version": "1.0.0",
-  "description": "AI-driven email filter using Mistral AI",
+  "description": "AI-powered email filter that scores digest emails against your personal profile using Mistral AI or Berget AI",
   "type": "module",
+  "author": "Pal Hamel",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/palhamel/mailfilter-ai.git"
+  },
+  "keywords": [
+    "email-filter",
+    "ai",
+    "imap",
+    "mistral",
+    "berget",
+    "digest",
+    "automation",
+    "typescript"
+  ],
   "engines": {
     "node": ">=24.0.0"
   },
