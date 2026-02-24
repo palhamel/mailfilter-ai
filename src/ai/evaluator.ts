@@ -1,6 +1,5 @@
-import { Mistral } from '@mistralai/mistralai';
 import { z } from 'zod';
-import type { EnvConfig, ParsedJob, JobEvaluation } from '../types/index.js';
+import type { AIClient, ParsedJob, JobEvaluation } from '../types/index.js';
 import { buildJobPrompt } from './prompt.js';
 
 const evaluationSchema = z.object({
@@ -25,35 +24,23 @@ export const parseEvaluationResponse = (
 };
 
 export const evaluateJob = async (
-  env: EnvConfig,
+  client: AIClient,
   job: ParsedJob,
   messageId: string,
   systemPrompt: string
 ): Promise<JobEvaluation> => {
-  const client = new Mistral({ apiKey: env.MISTRAL_API_KEY });
-
-  const response = await client.chat.complete({
-    model: env.MISTRAL_MODEL,
-    messages: [
-      { role: 'system', content: systemPrompt },
-      {
-        role: 'user',
-        content: buildJobPrompt({
-          title: job.title,
-          company: job.company,
-          location: job.location,
-          details: job.details,
-        }),
-      },
-    ],
-    temperature: 0,
-    responseFormat: { type: 'json_object' },
-  });
-
-  const content = response.choices?.[0]?.message?.content;
-  if (!content || typeof content !== 'string') {
-    throw new Error('Empty response from Mistral API');
-  }
+  const content = await client.complete([
+    { role: 'system', content: systemPrompt },
+    {
+      role: 'user',
+      content: buildJobPrompt({
+        title: job.title,
+        company: job.company,
+        location: job.location,
+        details: job.details,
+      }),
+    },
+  ]);
 
   const result = parseEvaluationResponse(content);
 

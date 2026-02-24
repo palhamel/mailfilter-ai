@@ -1,173 +1,28 @@
 import cron from 'node-cron';
 import { loadEnv } from './config/env.js';
-import { fetchUnreadEmails } from './mail/reader.js';
-import { detectProvider, parseJobDigest } from './mail/parser.js';
-import { evaluateJob } from './ai/evaluator.js';
+import { createAIClient } from './ai/providers.js';
 import { loadSystemPrompt } from './ai/prompt.js';
-import { sendDigestResultEmail } from './mail/sender.js';
-import { logEvaluation, logError, rotateLogs } from './logger/index.js';
-import { withRetry } from './utils/retry.js';
-import { delay } from './utils/delay.js';
+import { rotateLogs } from './logger/index.js';
+import { logError } from './logger/index.js';
 import { writeHealthFile } from './health/index.js';
 import { startHealthServer, stopHealthServer } from './http/server.js';
-import {
-  incrementCycles,
-  setCycleDuration,
-  incrementEmailsProcessed,
-  incrementJobsEvaluated,
-  incrementSkipped,
-  incrementErrors,
-  formatStatsLog,
-  getStats,
-} from './stats/index.js';
-import {
-  notifyStartup,
-  notifyCritical,
-  notify,
-  bufferError,
-  flushErrorBuffer,
-} from './notifications/index.js';
-import type { JobEvaluation } from './types/index.js';
+import { getStats } from './stats/index.js';
+import { notifyStartup, notifyCritical, notify } from './notifications/index.js';
+import { delay } from './utils/delay.js';
+import { processEmails } from './pipeline.js';
 
 const env = loadEnv();
 const systemPrompt = loadSystemPrompt(env.PROFILE_PATH);
+const aiClient = createAIClient(env);
 
 let processing = false;
 let shuttingDown = false;
 
-const isMistralRetryable = (error: unknown): boolean => {
-  if (error instanceof Error) {
-    const msg = error.message;
-    return msg.includes('429') || msg.includes('500') || msg.includes('503');
-  }
-  return false;
-};
-
-const processEmails = async (): Promise<void> => {
+const runCycle = async (): Promise<void> => {
   if (shuttingDown) return;
 
   processing = true;
-  const cycleStart = Date.now();
-  incrementCycles();
-  console.log(`\n[${new Date().toISOString()}] Checking for new emails...`);
-
-  let emails;
-  try {
-    emails = await withRetry(() => fetchUnreadEmails(env), {
-      maxAttempts: 3,
-      baseDelayMs: 2000,
-      onRetry: (err, attempt) => {
-        console.warn(`  [retry] IMAP attempt ${attempt} failed:`, err instanceof Error ? err.message : err);
-      },
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error('  IMAP failed after 3 attempts:', message);
-    logError(env.LOG_DIR, 'imap-fetch', err);
-    incrementErrors();
-    await notifyCritical(env, 'IMAP Failure', `Failed to fetch emails after 3 attempts:\n${message}`);
-    setCycleDuration(Date.now() - cycleStart);
-    console.log(formatStatsLog());
-    writeHealthFile(env.LOG_DIR, getStats());
-    processing = false;
-    return;
-  }
-
-  if (!emails.length) {
-    console.log('  No new emails.');
-    setCycleDuration(Date.now() - cycleStart);
-    console.log(formatStatsLog());
-    writeHealthFile(env.LOG_DIR, getStats());
-    processing = false;
-    return;
-  }
-
-  console.log(`  Found ${emails.length} email(s).`);
-
-  for (const email of emails) {
-    if (shuttingDown) break;
-
-    try {
-      const provider = detectProvider(email);
-
-      if (provider === 'Unknown') {
-        console.log(`  SKIP "${email.subject}" (unknown provider, from: ${email.from})`);
-        incrementSkipped();
-        continue;
-      }
-
-      incrementEmailsProcessed();
-      const jobs = parseJobDigest(email);
-      console.log(`  "${email.subject}" -> ${jobs.length} job(s) parsed`);
-
-      const evaluations: JobEvaluation[] = [];
-
-      for (let i = 0; i < jobs.length; i++) {
-        if (shuttingDown) break;
-
-        const job = jobs[i];
-
-        // Rate limit protection between evaluations
-        if (i > 0) {
-          await delay(750);
-        }
-
-        try {
-          const evaluation = await withRetry(
-            () => evaluateJob(env, job, email.messageId, systemPrompt),
-            {
-              maxAttempts: 2,
-              baseDelayMs: 2000,
-              shouldRetry: isMistralRetryable,
-              onRetry: (err, attempt) => {
-                console.warn(`    [retry] Mistral attempt ${attempt} for "${job.title}":`, err instanceof Error ? err.message : err);
-              },
-            }
-          );
-          evaluations.push(evaluation);
-          incrementJobsEvaluated();
-          logEvaluation(env.LOG_DIR, evaluation);
-          console.log(`    [${i + 1}/${jobs.length}] ${evaluation.category} ${evaluation.score}/5 ${evaluation.title} (${evaluation.company})`);
-        } catch (err) {
-          const message = err instanceof Error ? err.message : String(err);
-          console.error(`    [${i + 1}/${jobs.length}] FAILED: ${job.title} (${job.company})`);
-          logError(env.LOG_DIR, `mistral-eval:${job.title}`, err);
-          incrementErrors();
-          bufferError(`Mistral: ${job.title}`, message);
-        }
-      }
-
-      if (evaluations.length > 0) {
-        try {
-          await withRetry(() => sendDigestResultEmail(env, evaluations, email), {
-            maxAttempts: 2,
-            baseDelayMs: 3000,
-            onRetry: (err, attempt) => {
-              console.warn(`  [retry] SMTP attempt ${attempt} failed:`, err instanceof Error ? err.message : err);
-            },
-          });
-          console.log(`  -> Digest email sent (${evaluations.length} jobs)`);
-        } catch (err) {
-          const message = err instanceof Error ? err.message : String(err);
-          console.error(`  SMTP FAILED for "${email.subject}":`, message);
-          logError(env.LOG_DIR, `smtp-send:${email.subject}`, err);
-          incrementErrors();
-          bufferError(`SMTP: ${email.subject}`, message);
-        }
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      console.error(`  FAILED: "${email.subject}":`, message);
-      logError(env.LOG_DIR, `process-email:${email.subject}`, err);
-      incrementErrors();
-      bufferError(`Email: ${email.subject}`, message);
-    }
-  }
-
-  await flushErrorBuffer(env);
-  setCycleDuration(Date.now() - cycleStart);
-  console.log(formatStatsLog());
-  writeHealthFile(env.LOG_DIR, getStats());
+  await processEmails(env, aiClient, systemPrompt, () => shuttingDown);
   processing = false;
 };
 
@@ -222,7 +77,7 @@ process.on('SIGINT', () => shutdown('SIGINT'));
 
 // Startup
 const interval = env.MAILBOX_CHECK_INTERVAL_MINUTES;
-console.log(`Job Filter AI started. AI: Mistral (${env.MISTRAL_MODEL}). Checking every ${interval} minutes.\n`);
+console.log(`Job Filter AI started. AI: ${aiClient.provider} (${aiClient.model}). Checking every ${interval} minutes.\n`);
 await notifyStartup(env);
 
 // Rotate old logs on startup
@@ -235,7 +90,7 @@ writeHealthFile(env.LOG_DIR, getStats());
 startHealthServer(env.HEALTH_PORT);
 
 // Run immediately on start
-processEmails();
+runCycle();
 
 // Then on configured interval
-const cronTask = cron.schedule(`*/${interval} * * * *`, processEmails);
+const cronTask = cron.schedule(`*/${interval} * * * *`, runCycle);
