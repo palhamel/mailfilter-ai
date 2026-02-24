@@ -1,6 +1,6 @@
 # MailFilter AI
 
-AI-powered email filter. Reads digest emails from multiple platforms via IMAP, scores each listing against your personal profile using Mistral AI, and sends you a sorted summary email with the best matches on top.
+AI-powered email filter. Reads digest emails from multiple platforms via IMAP, scores each listing against your personal profile using AI, and sends you a sorted summary email with the best matches on top. Supports multiple AI providers — Mistral AI (default) and Berget AI (EU-sovereign inference).
 
 ## How it works
 
@@ -17,7 +17,7 @@ Detect provider -> route to HTML parser
 Extract individual listings
     |
     v
-Mistral AI: score each listing (1-5) against your profile
+AI: score each listing (1-5) against your profile
     |
     v
 SMTP: send sorted result email
@@ -29,7 +29,7 @@ Log to JSON, repeat on cron schedule
 1. **Read** - Connects to your mail server via IMAP and fetches unread emails
 2. **Detect** - Identifies the email provider (LinkedIn, Indeed, etc.); skips unknown senders
 3. **Parse** - Routes to provider-specific HTML parsers to extract individual listings
-4. **Evaluate** - Sends each listing to Mistral AI for scoring against your profile
+4. **Evaluate** - Sends each listing to your configured AI provider for scoring against your profile
 5. **Send** - Sends a result email with listings sorted by score (best matches first)
 6. **Log** - Writes evaluations and errors to daily JSON log files
 7. **Repeat** - Runs on a configurable cron schedule (default: every 15 minutes)
@@ -37,7 +37,9 @@ Log to JSON, repeat on cron schedule
 ## Prerequisites
 
 - **Node.js 24** or later
-- **Mistral AI API key** ([console.mistral.ai](https://console.mistral.ai))
+- **AI API key** — one of:
+  - [Mistral AI](https://console.mistral.ai) (default)
+  - [Berget AI](https://console.berget.ai) (EU-sovereign, OpenAI-compatible)
 - **IMAP/SMTP email account** (any provider that supports password auth)
 - Digest emails forwarded to that account
 
@@ -55,7 +57,7 @@ npm install
 cp .env.example .env
 cp profile.example.md profile.md
 
-# Edit .env with your mail credentials and Mistral API key
+# Edit .env with your mail credentials and AI API key
 # Edit profile.md with your preferences
 
 # Run
@@ -86,6 +88,25 @@ Set `PROFILE_PATH` in your `.env` to point to your profile file (e.g. `./profile
 | 2 | *(none)* | Weak match |
 | 1 | *(none)* | Irrelevant or wrong fit |
 
+## AI providers
+
+The evaluator uses a provider-agnostic `AIClient` interface, making it easy to switch or add providers.
+
+| Provider | `AI_PROVIDER` | API | Notes |
+|----------|---------------|-----|-------|
+| **Mistral AI** | `mistral` (default) | Mistral SDK | Fast, affordable text classification |
+| **Berget AI** | `berget` | OpenAI-compatible (native fetch) | EU-sovereign inference, no data leaves Europe |
+
+To switch provider, set `AI_PROVIDER` and the corresponding API key in your `.env`:
+
+```env
+AI_PROVIDER=berget
+BERGET_API_KEY=your-key-here
+BERGET_MODEL=llama-3.3-70b-instruct
+```
+
+Adding a new OpenAI-compatible provider requires only a new adapter in `src/ai/providers.ts`.
+
 ## Environment variables
 
 | Variable | Required | Default | Description |
@@ -96,8 +117,11 @@ Set `PROFILE_PATH` in your `.env` to point to your profile file (e.g. `./profile
 | `SMTP_HOST` | Yes | - | SMTP server hostname (e.g. `mail.provider.com`) |
 | `NOTIFY_EMAIL` | Yes | - | Email address to receive result digests |
 | `PROFILE_PATH` | Yes | - | Path to your profile markdown file |
+| `AI_PROVIDER` | No | `mistral` | AI provider: `mistral` or `berget` |
 | `MISTRAL_API_KEY` | Yes | - | Mistral AI API key |
 | `MISTRAL_MODEL` | No | `mistral-small-latest` | Mistral model to use |
+| `BERGET_API_KEY` | No | - | Berget AI API key (required when `AI_PROVIDER=berget`) |
+| `BERGET_MODEL` | No | `llama-3.3-70b-instruct` | Berget model to use |
 | `MAILBOX_CHECK_INTERVAL_MINUTES` | No | `15` | Minutes between mailbox checks |
 | `LOG_DIR` | No | `./data/logs` | Directory for JSON log files |
 | `DISCORD_WEBHOOK_URL` | No | - | Discord webhook for error/status notifications |
@@ -151,11 +175,13 @@ npm run typecheck   # Type check without emitting
 
 ```
 src/
-  index.ts              # Entry point, cron scheduler, pipeline orchestration
+  index.ts              # Entry point, cron scheduler, startup
+  pipeline.ts           # Email processing pipeline (fetch, parse, evaluate, send)
   config/
     env.ts              # Zod environment validation
   ai/
-    evaluator.ts        # Mistral API integration
+    providers.ts        # AI provider factory (Mistral, Berget)
+    evaluator.ts        # Provider-agnostic evaluation logic
     prompt.ts           # System prompt builder (loads profile from PROFILE_PATH)
   mail/
     reader.ts           # IMAP: fetch unread emails
@@ -184,7 +210,7 @@ src/
 ## Robustness
 
 - **IMAP retry** - 3 attempts with exponential backoff
-- **Mistral retry** - 2 attempts per evaluation, retries on 429/500/503
+- **AI retry** - 2 attempts per evaluation, retries on 429/500/503
 - **Rate limiting** - 750ms delay between AI evaluations
 - **Graceful shutdown** - SIGTERM/SIGINT stop cron, wait for in-flight work, notify Discord
 - **Error logging** - Errors written to daily JSON log files
@@ -197,7 +223,7 @@ src/
 
 - **Runtime:** Node.js 24 LTS, TypeScript (strict, ESM)
 - **Email:** IMAP (`imap` + `mailparser`), SMTP (`nodemailer`)
-- **AI:** Mistral AI (`@mistralai/mistralai`), deterministic scoring (`temperature: 0`)
+- **AI:** Multi-provider (Mistral AI, Berget AI), deterministic scoring (`temperature: 0`)
 - **Parsing:** Cheerio for HTML email parsing
 - **Validation:** Zod for environment config
 - **Scheduling:** node-cron
