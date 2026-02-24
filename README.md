@@ -9,6 +9,8 @@
 
 AI-powered email filter. Reads digest emails from multiple platforms via IMAP, scores each listing against your personal profile using AI, and sends you a sorted summary email with the best matches on top. Supports multiple AI providers — Mistral AI (default) and Berget AI (EU-sovereign inference).
 
+**MailFilter AI is a self-hosted server** — it runs continuously on a schedule, checking your mailbox and sending you summaries automatically. Deploy it with Docker or run it directly with Node.js.
+
 Great for any type of digest email — job ads, newsletters, property listings, freelance gigs — anything where you get bulk emails and only care about a few. Forward your digests to a dedicated mailbox, define what you're looking for in a simple markdown profile, and let AI do the filtering. Instead of scanning dozens of irrelevant listings every day, you get one clean summary with the best matches ranked first and the noise at the bottom.
 
 ## How it works
