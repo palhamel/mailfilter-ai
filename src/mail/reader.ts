@@ -1,7 +1,7 @@
 import Imap from 'imap';
 import { simpleParser } from 'mailparser';
 import type { EnvConfig, JobEmail } from '../types/index.js';
-import { extractLinks } from './parser.js';
+import { extractLinks } from '../utils/links.js';
 
 export const createImapConfig = (env: EnvConfig): Imap.Config => ({
   user: env.MAIL_USER,

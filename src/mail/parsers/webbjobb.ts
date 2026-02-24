@@ -1,6 +1,6 @@
 import * as cheerio from 'cheerio';
 import type { ParsedJob } from '../../types/index.js';
-import { extractLinks } from '../parser.js';
+import { extractLinks } from '../../utils/links.js';
 
 // Real structure: <div class="link [even]"> containing <strong><a href="tracking.webbjobb.io/...">Title →</a></strong>
 // Company is plain text, location in <em>, tags in <span class="tag tag-tech">

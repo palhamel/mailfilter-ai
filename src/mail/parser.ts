@@ -3,14 +3,9 @@ import { parseLinkedInHtml } from './parsers/linkedin.js';
 import { parseWebbjobbHtml, parseWebbjobbText } from './parsers/webbjobb.js';
 import { parseIndeedHtml } from './parsers/indeed.js';
 import { parseDemandoHtml } from './parsers/demando.js';
+import { extractLinks } from '../utils/links.js';
 
-const URL_REGEX = /https?:\/\/[^\s<>"')\]]+/g;
-
-export const extractLinks = (text: string): string[] => {
-  const matches = text.match(URL_REGEX);
-  if (!matches) return [];
-  return [...new Set(matches)];
-};
+export { extractLinks };
 
 export const parseEmailContent = (raw: {
   messageId?: string;
