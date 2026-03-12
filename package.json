@@ -55,5 +55,5 @@
   "overrides": {
     "minimatch": "^10.2.1"
   },
-  "private": false
+  "private": true
 }
