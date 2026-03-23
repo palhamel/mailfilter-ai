@@ -28,13 +28,17 @@ export const parseEmailContent = (raw: {
   };
 };
 
+/** Escape all regex special characters in a string. */
+const escapeRegex = (str: string): string =>
+  str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 /**
  * Check if a string contains a URL with the given domain.
  * Matches the domain exactly (not as a substring of a larger domain).
  * Handles patterns like: https://example.com, //example.com, .example.com
  */
 const containsDomain = (text: string, domain: string): boolean => {
-  const escaped = domain.replace(/\./g, '\\.');
+  const escaped = escapeRegex(domain);
   const pattern = new RegExp(`(?:^|[/.]|@)${escaped}(?:[/\\s:?#]|$)`);
   return pattern.test(text);
 };
@@ -44,7 +48,7 @@ const containsDomain = (text: string, domain: string): boolean => {
  * Matches @domain.com or @subdomain.domain.com patterns.
  */
 const senderMatchesDomain = (from: string, domain: string): boolean => {
-  const escaped = domain.replace(/\./g, '\\.');
+  const escaped = escapeRegex(domain);
   const pattern = new RegExp(`@(?:[\\w.-]+\\.)?${escaped}\\b`);
   return pattern.test(from);
 };
