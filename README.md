@@ -5,6 +5,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Ready-blue?logo=docker&logoColor=white)
 [![CI](https://github.com/palhamel/mailfilter-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/palhamel/mailfilter-ai/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/palhamel/mailfilter-ai/actions/workflows/codeql.yml/badge.svg)](https://github.com/palhamel/mailfilter-ai/actions/workflows/codeql.yml)
 ![AI Providers](https://img.shields.io/badge/AI-Mistral%20%7C%20Berget-purple?logo=openai&logoColor=white)
 
 AI-powered email filter. Reads digest emails from multiple platforms via IMAP, scores each listing against your personal profile using AI, and sends you a sorted summary email with the best matches on top. Supports multiple AI providers — Mistral AI (default) and Berget AI (EU-sovereign inference).
@@ -239,7 +240,48 @@ src/
 - **Validation:** Zod for environment config
 - **Scheduling:** node-cron
 - **Testing:** Vitest
-- **CI:** GitHub Actions (lint, typecheck, test, build, audit)
+- **CI/CD:** GitHub Actions (lint, typecheck, test, build, audit, container scan, SAST)
+
+## Security
+
+This project follows security best practices for a public, self-hosted application.
+
+### CI pipeline
+
+Every push and pull request to `main` runs:
+
+| Check | Tool | What it does |
+|-------|------|-------------|
+| Lint | ESLint + TypeScript | Code quality and type safety |
+| Tests | Vitest | Unit and integration tests |
+| Dependency audit | `npm audit` | Fails on critical npm vulnerabilities |
+| Container scan | [Grype](https://github.com/anchore/grype) (Anchore) | Scans the Docker image for OS and package CVEs |
+| Static analysis | [CodeQL](https://codeql.github.com/) | SAST for JavaScript/TypeScript (injection, prototype pollution, etc.) |
+
+CodeQL also runs on a weekly schedule to catch newly disclosed vulnerabilities in existing code.
+
+### Automated dependency updates
+
+[Dependabot](https://docs.github.com/en/code-security/dependabot) is configured to open pull requests weekly for:
+
+- npm package updates (security patches and version bumps)
+- GitHub Actions version updates
+
+### Branch protection
+
+The `main` branch is protected by a GitHub ruleset:
+
+- All changes require a pull request
+- CI and CodeQL status checks must pass before merge
+- Force-push and branch deletion are blocked
+
+### Supply chain hardening
+
+All GitHub Actions in CI workflows are pinned to full commit SHAs rather than mutable version tags. This prevents supply chain attacks where a compromised tag could inject malicious code into the build pipeline. Dependabot keeps these SHA pins up to date.
+
+### Reporting vulnerabilities
+
+If you discover a security vulnerability, please use [GitHub's private vulnerability reporting](https://github.com/palhamel/mailfilter-ai/security/advisories/new) rather than opening a public issue. See [SECURITY.md](.github/SECURITY.md) for details.
 
 ## License
 
