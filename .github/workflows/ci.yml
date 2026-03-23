@@ -15,10 +15,10 @@ jobs:
         node-version: [24]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
@@ -39,4 +39,15 @@ jobs:
         run: npm run build
 
       - name: Security audit (production deps)
-        run: npm audit --omit=dev --audit-level=high || true
+        run: npm audit --omit=dev --audit-level=critical
+
+      - name: Build Docker image
+        run: docker build -t mailfilter-ai:ci .
+
+      - name: Scan Docker image with Grype
+        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
+        with:
+          image: mailfilter-ai:ci
+          fail-build: 'true'
+          severity-cutoff: high
+          only-fixed: 'true'
