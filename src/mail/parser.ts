@@ -29,6 +29,27 @@ export const parseEmailContent = (raw: {
 };
 
 /**
+ * Check if a string contains a URL with the given domain.
+ * Matches the domain exactly (not as a substring of a larger domain).
+ * Handles patterns like: https://example.com, //example.com, .example.com
+ */
+const containsDomain = (text: string, domain: string): boolean => {
+  const escaped = domain.replace(/\./g, '\\.');
+  const pattern = new RegExp(`(?:^|[/.]|@)${escaped}(?:[/\\s:?#]|$)`);
+  return pattern.test(text);
+};
+
+/**
+ * Check if the sender address is from a specific domain.
+ * Matches @domain.com or @subdomain.domain.com patterns.
+ */
+const senderMatchesDomain = (from: string, domain: string): boolean => {
+  const escaped = domain.replace(/\./g, '\\.');
+  const pattern = new RegExp(`@(?:[\\w.-]+\\.)?${escaped}\\b`);
+  return pattern.test(from);
+};
+
+/**
  * Detect which job platform sent the email based on sender and HTML content.
  */
 export const detectProvider = (email: JobEmail): string => {
@@ -36,12 +57,12 @@ export const detectProvider = (email: JobEmail): string => {
   const html = email.html.toLowerCase();
   const body = email.body.toLowerCase();
 
-  if (from.includes('linkedin') || html.includes('linkedin.com/comm/jobs')) return 'LinkedIn';
-  if (from.includes('indeed') || from.includes('jobalert.indeed') || html.includes('indeed.com')) return 'Indeed';
-  if (from.includes('demando') || html.includes('demando.io') || html.includes('demando.se')) return 'Demando';
-  if (from.includes('webbjobb') || html.includes('webbjobb.io') || body.includes('webbjobb.io')) return 'Webbjobb';
-  if (from.includes('arbetsformedlingen') || html.includes('arbetsformedlingen.se')) return 'Arbetsformedlingen';
-  if (from.includes('glassdoor') || html.includes('glassdoor.com')) return 'Glassdoor';
+  if (senderMatchesDomain(from, 'linkedin.com') || containsDomain(html, 'linkedin.com')) return 'LinkedIn';
+  if (senderMatchesDomain(from, 'indeed.com') || containsDomain(html, 'indeed.com')) return 'Indeed';
+  if (senderMatchesDomain(from, 'demando.io') || containsDomain(html, 'demando.io') || containsDomain(html, 'demando.se')) return 'Demando';
+  if (senderMatchesDomain(from, 'webbjobb.io') || containsDomain(html, 'webbjobb.io') || containsDomain(body, 'webbjobb.io')) return 'Webbjobb';
+  if (senderMatchesDomain(from, 'arbetsformedlingen.se') || containsDomain(html, 'arbetsformedlingen.se')) return 'Arbetsformedlingen';
+  if (senderMatchesDomain(from, 'glassdoor.com') || containsDomain(html, 'glassdoor.com')) return 'Glassdoor';
 
   return 'Unknown';
 };

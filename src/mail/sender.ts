@@ -28,7 +28,12 @@ const PROVIDER_URLS: Record<string, string> = {
 };
 
 const escapeHtml = (text: string): string =>
-  text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
 
 const formatJobLink = (title: string, links: string[]): string => {
   if (links.length > 0) {
