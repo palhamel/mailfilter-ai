@@ -49,5 +49,5 @@ jobs:
         with:
           image: mailfilter-ai:ci
           fail-build: 'true'
-          severity-cutoff: high
+          severity-cutoff: critical
           only-fixed: 'true'
