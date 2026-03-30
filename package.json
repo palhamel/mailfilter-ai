@@ -35,7 +35,7 @@
     "@mistralai/mistralai": "^2.1.2",
     "cheerio": "^1.2.0",
     "imap": "^0.8.19",
-    "mailparser": "^3.9.5",
+    "mailparser": "^3.9.6",
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.3",
     "zod": "^4.3.6"
