@@ -32,7 +32,7 @@
     "lint": "eslint src/"
   },
   "dependencies": {
-    "@mistralai/mistralai": "^2.1.2",
+    "@mistralai/mistralai": "^2.2.0",
     "cheerio": "^1.2.0",
     "imap": "^0.8.19",
     "mailparser": "^3.9.5",
