@@ -2,7 +2,8 @@ import * as cheerio from 'cheerio';
 import type { ParsedJob } from '../../types/index.js';
 
 const extractLinkedInJobUrl = (href: string): string | null => {
-  const match = href.match(/linkedin\.com\/comm\/jobs\/view\/(\d+)/);
+  // Accept both /comm/jobs/view/ and direct /jobs/view/ — LinkedIn uses both formats
+  const match = href.match(/linkedin\.com\/(?:comm\/)?jobs\/view\/(\d+)/);
   if (match) {
     return `https://www.linkedin.com/jobs/view/${match[1]}/`;
   }

@@ -191,6 +191,24 @@ describe('parseJobDigest - LinkedIn', () => {
     expect(jobs.length).toBe(1);
     expect(jobs[0].title).toBe('Single job email');
   });
+
+  it('should parse direct /jobs/view/ links (without /comm/)', () => {
+    const html = `
+      <a href="https://www.linkedin.com/jobs/view/9876543/?trackingId=abc">Node.js Developer</a>
+    `;
+
+    const jobs = parseJobDigest(createEmail(html));
+    expect(jobs.length).toBe(1);
+    expect(jobs[0].title).toBe('Node.js Developer');
+    expect(jobs[0].links[0]).toBe('https://www.linkedin.com/jobs/view/9876543/');
+  });
+
+  it('should return empty array when LinkedIn HTML parses to 0 jobs', () => {
+    const html = `<p>No job links here</p>`;
+
+    const jobs = parseJobDigest(createEmail(html));
+    expect(jobs).toHaveLength(0);
+  });
 });
 
 describe('parseJobDigest - Webbjobb HTML', () => {
