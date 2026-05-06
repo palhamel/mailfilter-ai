@@ -191,6 +191,52 @@ describe('parseJobDigest - LinkedIn', () => {
     expect(jobs.length).toBe(1);
     expect(jobs[0].title).toBe('Single job email');
   });
+
+  it('should parse direct /jobs/view/ links (without /comm/)', () => {
+    const html = `
+      <a href="https://www.linkedin.com/jobs/view/9876543/?trackingId=abc">Node.js Developer</a>
+    `;
+
+    const jobs = parseJobDigest(createEmail(html));
+    expect(jobs.length).toBe(1);
+    expect(jobs[0].title).toBe('Node.js Developer');
+    expect(jobs[0].links[0]).toBe('https://www.linkedin.com/jobs/view/9876543/');
+  });
+
+  it('should return empty array when LinkedIn HTML parses to 0 jobs', () => {
+    const html = `<p>No job links here</p>`;
+
+    const jobs = parseJobDigest(createEmail(html));
+    expect(jobs).toHaveLength(0);
+  });
+});
+
+describe('parseJobDigest - STRUCTURED_PROVIDERS zero-job guard', () => {
+  it('should return [] when Indeed HTML parses to 0 jobs', () => {
+    const email: JobEmail = {
+      messageId: 'msg-indeed-empty',
+      from: 'donotreply@jobalert.indeed.com',
+      subject: 'Your job alert',
+      body: 'fallback text',
+      html: '<p>No job cards here</p>',
+      receivedAt: new Date(),
+      links: [],
+    };
+    expect(parseJobDigest(email)).toHaveLength(0);
+  });
+
+  it('should return [] when Demando HTML parses to 0 jobs', () => {
+    const email: JobEmail = {
+      messageId: 'msg-demando-empty',
+      from: 'reply@demando.io',
+      subject: 'New matches',
+      body: 'fallback text',
+      html: '<p>No job cards here</p>',
+      receivedAt: new Date(),
+      links: [],
+    };
+    expect(parseJobDigest(email)).toHaveLength(0);
+  });
 });
 
 describe('parseJobDigest - Webbjobb HTML', () => {
@@ -260,6 +306,19 @@ describe('parseJobDigest - Webbjobb HTML', () => {
     const jobs = parseJobDigest(createEmail(html));
     expect(jobs[0].details).toContain('React.js');
     expect(jobs[0].details).toContain('Node.js');
+  });
+
+  it('should return [] when Webbjobb HTML parses to 0 jobs and body is empty', () => {
+    const email: JobEmail = {
+      messageId: 'msg-wj-empty',
+      from: 'Webbjobb.io <robot@mail.webbjobb.io>',
+      subject: 'Veckans jobb',
+      body: '',
+      html: '<p>No job cards</p>',
+      receivedAt: new Date(),
+      links: [],
+    };
+    expect(parseJobDigest(email)).toHaveLength(0);
   });
 });
 

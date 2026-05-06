@@ -75,6 +75,10 @@ export const detectProvider = (email: JobEmail): string => {
  * Parse a job digest email into individual job entries.
  * Routes to provider-specific parsers based on detected provider.
  */
+// Webbjobb is intentionally excluded: its HTML parse failing is expected to
+// fall through to the text-based fallback further below.
+const STRUCTURED_PROVIDERS = new Set(['LinkedIn', 'Indeed', 'Demando']);
+
 export const parseJobDigest = (email: JobEmail): ParsedJob[] => {
   const provider = detectProvider(email);
 
@@ -95,18 +99,32 @@ export const parseJobDigest = (email: JobEmail): ParsedJob[] => {
 
     console.log(`  [parser] HTML parse -> ${jobs.length} job(s)`);
     if (jobs.length > 0) return jobs;
+
+    // Known providers have structured HTML — if parsing yielded nothing the format
+    // changed or the email is empty. Don't fall through to the whole-email fallback,
+    // which would send a multi-job digest to AI as if it were a single listing.
+    if (STRUCTURED_PROVIDERS.has(provider)) {
+      console.warn(`  [parser] ${provider} HTML parsed to 0 jobs — skipping email (format may have changed)`);
+      return [];
+    }
   }
 
-  // Text-based fallback for Webbjobb
-  if (provider === 'Webbjobb' && email.body) {
+  // Text-based fallback for Webbjobb — always return early (never reach unknown-provider fallback)
+  if (provider === 'Webbjobb') {
+    if (!email.body) {
+      console.warn(`  [parser] Webbjobb has no text body — skipping email`);
+      return [];
+    }
     const jobs = parseWebbjobbText(email.body, provider);
     console.log(`  [parser] text fallback -> ${jobs.length} job(s)`);
     if (jobs.length > 0) return jobs;
+    console.warn(`  [parser] Webbjobb text fallback returned 0 jobs — skipping email`);
+    return [];
   }
 
   console.log(`  [parser] fallback -> single job`);
 
-  // Final fallback: treat the whole email as one job
+  // Final fallback: treat the whole email as one job (unknown/unhandled providers only)
   return [{
     title: email.subject,
     company: 'unknown',
