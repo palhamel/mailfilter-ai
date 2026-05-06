@@ -145,10 +145,10 @@ Each provider has a dedicated HTML parser in `src/mail/parsers/`:
 
 | Provider | Detection |
 |----------|-----------|
-| **LinkedIn** | Sender contains `linkedin` |
-| **Webbjobb** | Sender contains `webbjobb` |
-| **Indeed** | Sender contains `indeed` |
-| **Demando** | Sender contains `demando` |
+| **LinkedIn** | Sender or HTML contains `linkedin.com` |
+| **Webbjobb** | Sender, HTML, or body contains `webbjobb.io` |
+| **Indeed** | Sender or HTML contains `indeed.com` |
+| **Demando** | Sender or HTML contains `demando.io`/`demando.se` |
 
 Emails from unrecognized providers are skipped and logged.
 
