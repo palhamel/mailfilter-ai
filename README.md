@@ -138,6 +138,7 @@ Adding a new OpenAI-compatible provider requires only a new adapter in `src/ai/p
 | `LOG_DIR` | No | `./data/logs` | Directory for JSON log files |
 | `DISCORD_WEBHOOK_URL` | No | - | Discord webhook for error/status notifications |
 | `HEALTH_PORT` | No | `3000` | HTTP health endpoint port |
+| `MAIL_RETENTION_DAYS` | No | `5` | Delete inbox emails older than this many days each cycle |
 
 ## Supported email providers
 

@@ -1,4 +1,4 @@
-import { fetchUnreadEmails } from './mail/reader.js';
+import { fetchUnreadEmails, deleteOldEmails } from './mail/reader.js';
 import { detectProvider, parseJobDigest } from './mail/parser.js';
 import { evaluateJob } from './ai/evaluator.js';
 import { sendDigestResultEmail } from './mail/sender.js';
@@ -39,7 +39,11 @@ export const processEmails = async (
 ): Promise<void> => {
   const cycleStart = Date.now();
   incrementCycles();
-  console.log(`\n[${new Date().toISOString()}] Checking for new emails...`);
+  console.log(`\n[${new Date().toISOString()}] Starting processing cycle...`);
+
+  // Write health file at cycle start to prevent Docker HEALTHCHECK from
+  // marking the container unhealthy during long-running cycles.
+  writeHealthFile(env.LOG_DIR, getStats());
 
   let emails;
   try {
@@ -64,13 +68,9 @@ export const processEmails = async (
 
   if (!emails.length) {
     console.log('  No new emails.');
-    setCycleDuration(Date.now() - cycleStart);
-    console.log(formatStatsLog());
-    writeHealthFile(env.LOG_DIR, getStats());
-    return;
+  } else {
+    console.log(`  Found ${emails.length} email(s).`);
   }
-
-  console.log(`  Found ${emails.length} email(s).`);
 
   for (const email of emails) {
     if (isShuttingDown()) break;
@@ -149,6 +149,18 @@ export const processEmails = async (
       incrementErrors();
       bufferError(`Email: ${email.subject}`, message);
     }
+  }
+
+  // Delete emails older than MAIL_RETENTION_DAYS from inbox
+  try {
+    const deleted = await deleteOldEmails(env, env.MAIL_RETENTION_DAYS);
+    if (deleted > 0) {
+      console.log(`  Deleted ${deleted} email(s) older than ${env.MAIL_RETENTION_DAYS} days from inbox.`);
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('  IMAP cleanup failed:', message);
+    logError(env.LOG_DIR, 'imap-cleanup', err);
   }
 
   await flushErrorBuffer(env);
