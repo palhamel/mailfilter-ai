@@ -17,6 +17,7 @@ const envSchema = z.object({
   DISCORD_WEBHOOK_URL: z.url().optional(),
   HEALTH_PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   PROFILE_PATH: z.string().min(1, { error: 'PROFILE_PATH is required' }),
+  MAIL_RETENTION_DAYS: z.coerce.number().int().min(1).default(5),
 });
 
 export const loadEnv = (): EnvConfig => {

@@ -14,9 +14,15 @@ export const createImapConfig = (env: EnvConfig): Imap.Config => ({
   connTimeout: 15000,
 });
 
+const IMAP_TIMEOUT_MS = 60_000;
+
 export const fetchUnreadEmails = (env: EnvConfig): Promise<JobEmail[]> => {
-  return new Promise((resolve, reject) => {
+  let imapRef: Imap | undefined;
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  const imapPromise = new Promise<JobEmail[]>((resolve, reject) => {
     const imap = new Imap(createImapConfig(env));
+    imapRef = imap;
     const emails: JobEmail[] = [];
 
     imap.once('ready', () => {
@@ -93,4 +99,97 @@ export const fetchUnreadEmails = (env: EnvConfig): Promise<JobEmail[]> => {
 
     imap.connect();
   });
+
+  // Clear the timer when the IMAP promise settles normally.
+  imapPromise.finally(() => {
+    if (timeoutId !== undefined) clearTimeout(timeoutId);
+  });
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      if (imapRef) {
+        try {
+          // Remove the once('error') listener before destroy() so the error
+          // event it emits doesn't become unhandled (which would throw and
+          // trigger uncaughtException → process.exit).
+          imapRef.removeAllListeners('error');
+          imapRef.on('error', () => {});
+          imapRef.destroy();
+        } catch { /* ignore */ }
+      }
+      reject(new Error(`IMAP timeout after ${IMAP_TIMEOUT_MS / 1000}s`));
+    }, IMAP_TIMEOUT_MS);
+  });
+
+  return Promise.race([imapPromise, timeoutPromise]);
+};
+
+export const deleteOldEmails = (env: EnvConfig, retentionDays: number): Promise<number> => {
+  let imapRef: Imap | undefined;
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  const imapPromise = new Promise<number>((resolve, reject) => {
+    const imap = new Imap(createImapConfig(env));
+    imapRef = imap;
+
+    imap.once('ready', () => {
+      imap.openBox('INBOX', false, (err) => {
+        if (err) {
+          imap.end();
+          return reject(err);
+        }
+
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - retentionDays);
+
+        imap.search([['BEFORE', cutoff]], (searchErr, results) => {
+          if (searchErr) {
+            imap.end();
+            return reject(searchErr);
+          }
+
+          if (!results.length) {
+            imap.end();
+            return resolve(0);
+          }
+
+          imap.addFlags(results, '\\Deleted', (flagErr) => {
+            if (flagErr) {
+              imap.end();
+              return reject(flagErr);
+            }
+
+            imap.expunge((expungeErr) => {
+              imap.end();
+              if (expungeErr) return reject(expungeErr);
+              resolve(results.length);
+            });
+          });
+        });
+      });
+    });
+
+    imap.once('error', reject);
+    imap.connect();
+  });
+
+  // Clear the timer when the IMAP promise settles normally.
+  imapPromise.finally(() => {
+    if (timeoutId !== undefined) clearTimeout(timeoutId);
+  });
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      if (imapRef) {
+        try {
+          imapRef.removeAllListeners('error');
+          imapRef.on('error', () => {});
+          imapRef.destroy();
+        } catch { /* ignore */ }
+      }
+      reject(new Error(`IMAP cleanup timeout after ${IMAP_TIMEOUT_MS / 1000}s`));
+    }, IMAP_TIMEOUT_MS);
+  });
+
+  return Promise.race([imapPromise, timeoutPromise]);
 };

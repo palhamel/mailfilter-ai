@@ -66,4 +66,5 @@ export interface EnvConfig {
   DISCORD_WEBHOOK_URL?: string;
   HEALTH_PORT: number;
   PROFILE_PATH: string;
+  MAIL_RETENTION_DAYS: number;
 }
