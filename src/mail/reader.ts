@@ -100,11 +100,6 @@ export const fetchUnreadEmails = (env: EnvConfig): Promise<JobEmail[]> => {
     imap.connect();
   });
 
-  // Clear the timer when the IMAP promise settles normally.
-  imapPromise.finally(() => {
-    if (timeoutId !== undefined) clearTimeout(timeoutId);
-  });
-
   const timeoutPromise = new Promise<never>((_, reject) => {
     timeoutId = setTimeout(() => {
       if (imapRef) {
@@ -121,7 +116,11 @@ export const fetchUnreadEmails = (env: EnvConfig): Promise<JobEmail[]> => {
     }, IMAP_TIMEOUT_MS);
   });
 
-  return Promise.race([imapPromise, timeoutPromise]);
+  // Attach finally to the race result so the timer is always cleared and
+  // the cleanup promise is properly chained (avoids unhandled rejection).
+  return Promise.race([imapPromise, timeoutPromise]).finally(() => {
+    if (timeoutId !== undefined) clearTimeout(timeoutId);
+  });
 };
 
 export const deleteOldEmails = (env: EnvConfig, retentionDays: number): Promise<number> => {
@@ -173,11 +172,6 @@ export const deleteOldEmails = (env: EnvConfig, retentionDays: number): Promise<
     imap.connect();
   });
 
-  // Clear the timer when the IMAP promise settles normally.
-  imapPromise.finally(() => {
-    if (timeoutId !== undefined) clearTimeout(timeoutId);
-  });
-
   const timeoutPromise = new Promise<never>((_, reject) => {
     timeoutId = setTimeout(() => {
       if (imapRef) {
@@ -191,5 +185,7 @@ export const deleteOldEmails = (env: EnvConfig, retentionDays: number): Promise<
     }, IMAP_TIMEOUT_MS);
   });
 
-  return Promise.race([imapPromise, timeoutPromise]);
+  return Promise.race([imapPromise, timeoutPromise]).finally(() => {
+    if (timeoutId !== undefined) clearTimeout(timeoutId);
+  });
 };

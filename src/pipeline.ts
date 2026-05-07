@@ -68,13 +68,9 @@ export const processEmails = async (
 
   if (!emails.length) {
     console.log('  No new emails.');
-    setCycleDuration(Date.now() - cycleStart);
-    console.log(formatStatsLog());
-    writeHealthFile(env.LOG_DIR, getStats());
-    return;
+  } else {
+    console.log(`  Found ${emails.length} email(s).`);
   }
-
-  console.log(`  Found ${emails.length} email(s).`);
 
   for (const email of emails) {
     if (isShuttingDown()) break;
