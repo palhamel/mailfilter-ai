@@ -49,6 +49,7 @@ export const stopHealthServer = (): Promise<void> => {
 
     server.close(() => {
       server = null;
+      logDir = './data/logs';
       resolve();
     });
   });

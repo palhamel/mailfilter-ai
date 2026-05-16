@@ -57,10 +57,16 @@ const shutdown = async (signal: string): Promise<void> => {
 };
 
 // Crash handlers — synchronous to prevent logError failures from spawning new unhandledRejections
+// 5s timeout prevents a hanging Discord webhook from delaying process exit after a crash
+const CRASH_NOTIFY_TIMEOUT_MS = 5_000;
+const withExitTimeout = (p: Promise<unknown>): Promise<unknown> =>
+  Promise.race([p, new Promise((_, r) => setTimeout(() => r(new Error('timeout')), CRASH_NOTIFY_TIMEOUT_MS))]);
+
 process.on('uncaughtException', (err) => {
   console.error('[FATAL] uncaughtException:', err);
   try { logError(env.LOG_DIR, 'uncaughtException', err); } catch { /* stderr is the fallback */ }
-  notifyCritical(env, 'FATAL: Uncaught Exception', err.message)
+  const message = err instanceof Error ? err.message : String(err);
+  withExitTimeout(notifyCritical(env, 'FATAL: Uncaught Exception', message))
     .catch((e) => console.error('[FATAL] notification failed:', e))
     .finally(() => process.exit(1));
 });
@@ -69,7 +75,7 @@ process.on('unhandledRejection', (reason) => {
   console.error('[FATAL] unhandledRejection:', reason);
   try { logError(env.LOG_DIR, 'unhandledRejection', reason); } catch { /* stderr is the fallback */ }
   const message = reason instanceof Error ? reason.message : String(reason);
-  notifyCritical(env, 'FATAL: Unhandled Rejection', message)
+  withExitTimeout(notifyCritical(env, 'FATAL: Unhandled Rejection', message))
     .catch((e) => console.error('[FATAL] notification failed:', e))
     .finally(() => process.exit(1));
 });
