@@ -1,6 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { formatDigestEmail } from '../sender.js';
-import type { JobEmail, JobEvaluation } from '../../types/index.js';
+import type { JobEmail, JobEvaluation, EnvConfig } from '../../types/index.js';
+
+const mockEnv = {
+  AI_PROVIDER: 'mistral',
+  MISTRAL_MODEL: 'mistral-small-latest',
+  BERGET_MODEL: 'llama-3.3-70b-instruct',
+  MAILBOX_CHECK_INTERVAL_MINUTES: 15,
+} as unknown as EnvConfig;
 
 describe('formatDigestEmail', () => {
   const mockEmail: JobEmail = {
@@ -53,7 +60,7 @@ describe('formatDigestEmail', () => {
   ];
 
   it('should sort jobs by score (highest first)', () => {
-    const { html } = formatDigestEmail(mockEvaluations, mockEmail);
+    const { html } = formatDigestEmail(mockEvaluations, mockEmail, mockEnv);
     const climatePos = html.indexOf('ClimateView');
     const spotifyPos = html.indexOf('Spotify');
     const bigcorpPos = html.indexOf('BigCorp');
@@ -63,34 +70,34 @@ describe('formatDigestEmail', () => {
   });
 
   it('should separate highlighted jobs from the rest', () => {
-    const { html } = formatDigestEmail(mockEvaluations, mockEmail);
+    const { html } = formatDigestEmail(mockEvaluations, mockEmail, mockEnv);
 
     expect(html).toContain('Worth checking out');
     expect(html).toContain('Skipped');
   });
 
   it('should include job count in subject', () => {
-    const { subject } = formatDigestEmail(mockEvaluations, mockEmail);
+    const { subject } = formatDigestEmail(mockEvaluations, mockEmail, mockEnv);
 
     expect(subject).toContain('3 jobs');
   });
 
   it('should not include emojis in subject', () => {
-    const { subject } = formatDigestEmail(mockEvaluations, mockEmail);
+    const { subject } = formatDigestEmail(mockEvaluations, mockEmail, mockEnv);
 
     expect(subject).not.toMatch(/[\u{1F300}-\u{1F9FF}]/u);
     expect(subject).toMatch(/^JobFilter/);
   });
 
   it('should include top score in subject', () => {
-    const { subject } = formatDigestEmail(mockEvaluations, mockEmail);
+    const { subject } = formatDigestEmail(mockEvaluations, mockEmail, mockEnv);
 
     expect(subject).toContain('top match 4/5');
   });
 
   it('should format single job subject with title and company', () => {
     const singleEval = [mockEvaluations[0]];
-    const { subject } = formatDigestEmail(singleEval, mockEmail);
+    const { subject } = formatDigestEmail(singleEval, mockEmail, mockEnv);
 
     expect(subject).toContain('Fullstack Developer');
     expect(subject).toContain('ClimateView');
@@ -99,14 +106,14 @@ describe('formatDigestEmail', () => {
   });
 
   it('should render highlighted job links as clickable HTML', () => {
-    const { html } = formatDigestEmail(mockEvaluations, mockEmail);
+    const { html } = formatDigestEmail(mockEvaluations, mockEmail, mockEnv);
 
     expect(html).toContain('href="https://linkedin.com/jobs/123"');
     expect(html).toContain('>Fullstack Developer</a>');
   });
 
   it('should render low-rated job links as clickable HTML', () => {
-    const { html } = formatDigestEmail(mockEvaluations, mockEmail);
+    const { html } = formatDigestEmail(mockEvaluations, mockEmail, mockEnv);
 
     const skippedSection = html.split('Skipped')[1];
     expect(skippedSection).toContain('href="https://linkedin.com/jobs/456"');
@@ -116,7 +123,7 @@ describe('formatDigestEmail', () => {
   });
 
   it('should link provider name to root URL', () => {
-    const { html } = formatDigestEmail(mockEvaluations, mockEmail);
+    const { html } = formatDigestEmail(mockEvaluations, mockEmail, mockEnv);
 
     expect(html).toContain('href="https://www.linkedin.com/jobs/"');
     expect(html).toContain('>LinkedIn</a>');
@@ -128,26 +135,26 @@ describe('formatDigestEmail', () => {
       company: 'unknown',
     }];
 
-    const { html } = formatDigestEmail(evalsWithUnknown, mockEmail);
+    const { html } = formatDigestEmail(evalsWithUnknown, mockEmail, mockEnv);
     expect(html).not.toContain('>unknown<');
     expect(html).not.toContain('(unknown)');
   });
 
   it('should show source in footer', () => {
-    const { html } = formatDigestEmail(mockEvaluations, mockEmail);
+    const { html } = formatDigestEmail(mockEvaluations, mockEmail, mockEnv);
 
     expect(html).toContain('Source: LinkedIn');
   });
 
   it('should not contain emoji categories in email body', () => {
-    const { html } = formatDigestEmail(mockEvaluations, mockEmail);
+    const { html } = formatDigestEmail(mockEvaluations, mockEmail, mockEnv);
 
     expect(html).not.toContain('🟢');
     expect(html).not.toContain('🟡');
   });
 
   it('should color-code scores in highlighted section', () => {
-    const { html } = formatDigestEmail(mockEvaluations, mockEmail);
+    const { html } = formatDigestEmail(mockEvaluations, mockEmail, mockEnv);
 
     // Score 4 should be green
     expect(html).toContain('color:#16a34a');

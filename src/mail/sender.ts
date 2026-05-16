@@ -17,6 +17,7 @@ export const createTransport = (env: EnvConfig) => {
 };
 
 const HIGHLIGHT_THRESHOLD = 3;
+export const MIN_SEND_SCORE = 3;
 
 const PROVIDER_URLS: Record<string, string> = {
   LinkedIn: 'https://www.linkedin.com/jobs/',
@@ -75,7 +76,8 @@ const getScoreColor = (score: number): string => {
 
 export const formatDigestEmail = (
   evaluations: JobEvaluation[],
-  original: JobEmail
+  original: JobEmail,
+  env: EnvConfig
 ): { subject: string; html: string } => {
   const sorted = [...evaluations].sort((a, b) => b.score - a.score);
   const highlighted = sorted.filter((e) => e.score >= HIGHLIGHT_THRESHOLD);
@@ -154,9 +156,15 @@ export const formatDigestEmail = (
     parts.push(`</div></div>`);
   }
 
+  const modelName = env.AI_PROVIDER === 'berget' ? env.BERGET_MODEL : env.MISTRAL_MODEL;
+  const intervalMin = env.MAILBOX_CHECK_INTERVAL_MINUTES;
+
   parts.push(`
       <div style="margin-top:24px;padding-top:12px;border-top:1px solid #f3f4f6;font-size:11px;color:#9ca3af;">
         Processed ${formatDate(new Date())} &middot; Source: ${escapeHtml(provider)}
+      </div>
+      <div style="margin-top:6px;font-size:11px;color:#d1d5db;">
+        Filter settings &middot; Min score to send: ${MIN_SEND_SCORE}/5 &middot; AI: ${escapeHtml(modelName)} &middot; Check interval: every ${intervalMin} min
       </div>
     </div>
   `);
@@ -170,7 +178,7 @@ export const sendDigestResultEmail = async (
   original: JobEmail
 ): Promise<void> => {
   const transport = createTransport(env);
-  const { subject, html } = formatDigestEmail(evaluations, original);
+  const { subject, html } = formatDigestEmail(evaluations, original, env);
 
   await transport.sendMail({
     from: env.MAIL_USER,
