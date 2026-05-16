@@ -19,7 +19,7 @@ let processing = false;
 let shuttingDown = false;
 
 const runCycle = async (): Promise<void> => {
-  if (shuttingDown) return;
+  if (shuttingDown || processing) return;
 
   processing = true;
   await processEmails(env, aiClient, systemPrompt, () => shuttingDown);
@@ -56,20 +56,22 @@ const shutdown = async (signal: string): Promise<void> => {
   process.exit(0);
 };
 
-// Crash handlers
-process.on('uncaughtException', async (err) => {
+// Crash handlers — synchronous to prevent logError failures from spawning new unhandledRejections
+process.on('uncaughtException', (err) => {
   console.error('[FATAL] uncaughtException:', err);
-  logError(env.LOG_DIR, 'uncaughtException', err);
-  await notifyCritical(env, 'FATAL: Uncaught Exception', err.message);
-  process.exit(1);
+  try { logError(env.LOG_DIR, 'uncaughtException', err); } catch { /* stderr is the fallback */ }
+  notifyCritical(env, 'FATAL: Uncaught Exception', err.message)
+    .catch((e) => console.error('[FATAL] notification failed:', e))
+    .finally(() => process.exit(1));
 });
 
-process.on('unhandledRejection', async (reason) => {
+process.on('unhandledRejection', (reason) => {
   console.error('[FATAL] unhandledRejection:', reason);
-  logError(env.LOG_DIR, 'unhandledRejection', reason);
+  try { logError(env.LOG_DIR, 'unhandledRejection', reason); } catch { /* stderr is the fallback */ }
   const message = reason instanceof Error ? reason.message : String(reason);
-  await notifyCritical(env, 'FATAL: Unhandled Rejection', message);
-  process.exit(1);
+  notifyCritical(env, 'FATAL: Unhandled Rejection', message)
+    .catch((e) => console.error('[FATAL] notification failed:', e))
+    .finally(() => process.exit(1));
 });
 
 process.on('SIGTERM', () => shutdown('SIGTERM'));
@@ -87,7 +89,7 @@ rotateLogs(env.LOG_DIR, 30);
 writeHealthFile(env.LOG_DIR, getStats());
 
 // Start HTTP health endpoint for external monitoring (Uptime Kuma)
-startHealthServer(env.HEALTH_PORT);
+startHealthServer(env.HEALTH_PORT, env.LOG_DIR);
 
 // Run immediately on start
 runCycle();

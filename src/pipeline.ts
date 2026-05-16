@@ -60,7 +60,9 @@ export const processEmails = async (
     logError(env.LOG_DIR, 'imap-fetch', err);
     incrementErrors();
     await notifyCritical(env, 'IMAP Failure', `Failed to fetch emails after 3 attempts:\n${message}`);
-    setCycleDuration(Date.now() - cycleStart);
+    const imapFailElapsed = Date.now() - cycleStart;
+    setCycleDuration(imapFailElapsed);
+    console.log(`[${new Date().toISOString()}] Cycle aborted (IMAP failure) in ${(imapFailElapsed / 1000).toFixed(1)}s`);
     console.log(formatStatsLog());
     writeHealthFile(env.LOG_DIR, getStats());
     return;
@@ -164,7 +166,9 @@ export const processEmails = async (
   }
 
   await flushErrorBuffer(env);
-  setCycleDuration(Date.now() - cycleStart);
+  const elapsed = Date.now() - cycleStart;
+  setCycleDuration(elapsed);
+  console.log(`[${new Date().toISOString()}] Cycle complete in ${(elapsed / 1000).toFixed(1)}s`);
   console.log(formatStatsLog());
   writeHealthFile(env.LOG_DIR, getStats());
 };
