@@ -26,7 +26,9 @@ RUN mkdir -p /app/data/logs && chown -R appuser:appgroup /app/data
 
 USER appuser
 
-HEALTHCHECK --interval=15m --timeout=5s --start-period=30s --retries=3 \
-  CMD node dist/health/check.js || exit 1
+EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD wget -qO- "http://localhost:${HEALTH_PORT:-3000}/health" > /dev/null || exit 1
 
 CMD ["node", "dist/index.js"]
