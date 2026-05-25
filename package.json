@@ -37,7 +37,7 @@
     "imap": "^0.8.19",
     "mailparser": "^3.9.8",
     "node-cron": "^4.2.1",
-    "nodemailer": "^8.0.7",
+    "nodemailer": "^8.0.8",
     "zod": "^4.4.3"
   },
   "devDependencies": {
