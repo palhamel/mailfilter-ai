@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js-24%2B-green.svg)](https://nodejs.org/)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-6.0-blue?logo=typescript&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Ready-blue?logo=docker&logoColor=white)
 [![CI](https://github.com/palhamel/mailfilter-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/palhamel/mailfilter-ai/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/palhamel/mailfilter-ai/actions/workflows/codeql.yml/badge.svg)](https://github.com/palhamel/mailfilter-ai/actions/workflows/codeql.yml)
