@@ -2,6 +2,7 @@ FROM node:24-alpine AS builder
 
 WORKDIR /app
 
+RUN npm install -g npm@12.0.1
 COPY package.json package-lock.json* ./
 RUN npm ci
 
@@ -17,6 +18,7 @@ RUN addgroup -g 1001 -S appgroup && \
 
 WORKDIR /app
 
+RUN npm install -g npm@12.0.1
 COPY package.json package-lock.json* ./
 RUN npm ci --omit=dev && npm cache clean --force
 
